@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { User, Calendar } from '@/types';
 import { DEMO_USERS } from '@/lib/storage';
-import { Calendar as CalendarIcon, User as UserIcon, Plus, Users, Sparkles, MessageCircle, Copy, Check, ChevronDown, RefreshCw } from 'lucide-react';
+import { Calendar as CalendarIcon, User as UserIcon, Plus, Users, Sparkles, MessageCircle, Copy, Check, ChevronDown, RefreshCw, Mail } from 'lucide-react';
 
 interface HeaderProps {
   currentUser: User;
@@ -15,6 +15,7 @@ interface HeaderProps {
   onOpenNewCalendarModal: () => void;
   onOpenFreeBusyModal: () => void;
   onOpenInviteModal: () => void;
+  onOpenEmailAuthModal: () => void;
   onResetData: () => void;
 }
 
@@ -28,6 +29,7 @@ export function Header({
   onOpenNewCalendarModal,
   onOpenFreeBusyModal,
   onOpenInviteModal,
+  onOpenEmailAuthModal,
   onResetData,
 }: HeaderProps) {
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -102,6 +104,15 @@ export function Header({
 
         {/* Action Buttons */}
         <div className="flex items-center gap-2">
+          {/* Email Code Verification Button */}
+          <button
+            onClick={onOpenEmailAuthModal}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-medium text-xs sm:text-sm border border-slate-700 shadow transition-all"
+          >
+            <Mail className="w-4 h-4 text-indigo-400" />
+            <span className="hidden md:inline">이메일 인증</span>
+          </button>
+
           {/* Free Busy Matcher Engine Button */}
           <button
             onClick={onOpenFreeBusyModal}

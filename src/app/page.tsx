@@ -20,6 +20,7 @@ import { FreeBusyModal } from '@/components/FreeBusyModal';
 import { EventModal } from '@/components/EventModal';
 import { CalendarModal } from '@/components/CalendarModal';
 import { InviteModal } from '@/components/InviteModal';
+import { EmailAuthModal } from '@/components/EmailAuthModal';
 import { Toast } from '@/components/Toast';
 
 import {
@@ -46,6 +47,7 @@ export default function HomePage() {
   const [isEventModalOpen, setIsEventModalOpen] = useState(false);
   const [isCalendarModalOpen, setIsCalendarModalOpen] = useState(false);
   const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isEmailAuthOpen, setIsEmailAuthOpen] = useState(false);
 
   const [selectedEvent, setSelectedEvent] = useState<Partial<CalendarEvent> | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
@@ -237,6 +239,7 @@ export default function HomePage() {
         onOpenNewCalendarModal={() => setIsCalendarModalOpen(true)}
         onOpenFreeBusyModal={() => setIsFreeBusyOpen(true)}
         onOpenInviteModal={() => setIsInviteModalOpen(true)}
+        onOpenEmailAuthModal={() => setIsEmailAuthOpen(true)}
         onResetData={handleResetData}
       />
 
@@ -394,6 +397,14 @@ export default function HomePage() {
         calendar={activeCalendar}
         currentUser={currentUserState}
         onShowToast={(msg) => setToastMessage(msg)}
+      />
+
+      <EmailAuthModal
+        isOpen={isEmailAuthOpen}
+        onClose={() => setIsEmailAuthOpen(false)}
+        onSuccess={(verifiedEmail) => {
+          setToastMessage(`'${verifiedEmail}' 이메일 인증이 완료되었습니다!`);
+        }}
       />
 
       <Toast message={toastMessage} onClear={() => setToastMessage(null)} />
