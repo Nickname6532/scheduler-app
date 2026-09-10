@@ -1,0 +1,16 @@
+{
+  "name": "모여봐 - 카카오톡 일정 공유",
+  "short_name": "모여봐",
+  "description": "카카오톡 친구/가족 일정 공유 및 빈 시간 자동 조율 앱",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ]
+}

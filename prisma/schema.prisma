@@ -1,0 +1,111 @@
+// This is your Prisma schema file matching the SRS ERD specification.
+// Learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum MemberRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+enum InvitationStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+}
+
+model User {
+  userId          String   @id @default(uuid()) @map("user_id")
+  kakaoId         String   @unique @map("kakao_id")
+  email           String?
+  nickname        String
+  profileImageUrl String?  @map("profile_image_url")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  ownedCalendars  Calendar[]       @relation("CalendarOwner")
+  memberships     CalendarMember[]
+  createdEvents   Event[]
+  invitationsSent Invitation[]
+
+  @@map("users")
+}
+
+model Calendar {
+  calendarId  String   @id @default(uuid()) @map("calendar_id")
+  ownerId     String   @map("owner_id")
+  name        String
+  description String?
+  colorCode   String   @default("#3B82F6") @map("color_code")
+  isPersonal  Boolean  @default(false) @map("is_personal")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  owner       User             @relation("CalendarOwner", fields: [ownerId], references: [userId], onDelete: Cascade)
+  members     CalendarMember[]
+  events      Event[]
+  invitations Invitation[]
+
+  @@map("calendars")
+}
+
+model CalendarMember {
+  memberId     String     @id @default(uuid()) @map("member_id")
+  calendarId   String     @map("calendar_id")
+  userId       String     @map("user_id")
+  role         MemberRole @default(MEMBER)
+  displayColor String?    @map("display_color")
+  joinedAt     DateTime   @default(now()) @map("joined_at")
+
+  calendar Calendar @relation(fields: [calendarId], references: [calendarId], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  @@unique([calendarId, userId], name: "uq_calendar_user")
+  @@index([userId], name: "idx_calendar_members_user")
+  @@map("calendar_members")
+}
+
+model Event {
+  eventId     String   @id @default(uuid()) @map("event_id")
+  calendarId  String   @map("calendar_id")
+  creatorId   String?  @map("creator_id")
+  title       String
+  description String?
+  startTime   DateTime @map("start_time")
+  endTime     DateTime @map("end_time")
+  isAllDay    Boolean  @default(false) @map("is_all_day")
+  isPrivate   Boolean  @default(false) @map("is_private")
+  location    String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  calendar Calendar @relation(fields: [calendarId], references: [calendarId], onDelete: Cascade)
+  creator  User?    @relation(fields: [creatorId], references: [userId], onDelete: SetNull)
+
+  @@index([calendarId, startTime, endTime], name: "idx_events_calendar_times")
+  @@map("events")
+}
+
+model Invitation {
+  invitationId String           @id @default(uuid()) @map("invitation_id")
+  calendarId   String           @map("calendar_id")
+  inviterId    String           @map("inviter_id")
+  inviteCode   String           @unique @map("invite_code")
+  status       InvitationStatus @default(ACTIVE)
+  expiresAt    DateTime         @map("expires_at")
+  createdAt    DateTime         @default(now()) @map("created_at")
+
+  calendar Calendar @relation(fields: [calendarId], references: [calendarId], onDelete: Cascade)
+  inviter  User     @relation(fields: [inviterId], references: [userId], onDelete: Cascade)
+
+  @@index([inviteCode], name: "idx_invitations_code")
+  @@map("invitations")
+}
