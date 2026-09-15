@@ -4,7 +4,12 @@ export async function GET(request: Request) {
   const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
   const proto = request.headers.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https');
   const origin = host ? `${proto}://${host}` : process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
-  const clientId = process.env.KAKAO_REST_API_KEY || process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+  const clientId =
+    process.env.KAKAO_REST_API_KEY ||
+    process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY ||
+    process.env.KAKAO_API_KEY ||
+    process.env.KAKAO_CLIENT_ID ||
+    process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
 
   if (!clientId) {
     return NextResponse.redirect(

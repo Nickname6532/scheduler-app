@@ -11,7 +11,12 @@ export async function GET(request: Request) {
     return NextResponse.redirect(new URL('/?kakao_error=missing_code', origin));
   }
 
-  const clientId = process.env.KAKAO_REST_API_KEY || process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+  const clientId =
+    process.env.KAKAO_REST_API_KEY ||
+    process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY ||
+    process.env.KAKAO_API_KEY ||
+    process.env.KAKAO_CLIENT_ID ||
+    process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
   const redirectUri = `${origin}/api/auth/kakao`;
 
   if (!clientId) {
