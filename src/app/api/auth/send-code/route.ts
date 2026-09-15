@@ -54,7 +54,9 @@ export async function POST(request: Request) {
     codeStore.set(email, { code: verificationCode, expiresAt });
 
     const apiKey = process.env.RESEND_API_KEY;
-    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const host = request.headers.get('x-forwarded-host') || request.headers.get('host');
+    const proto = request.headers.get('x-forwarded-proto') || (host?.includes('localhost') ? 'http' : 'https');
+    const origin = request.headers.get('origin') || (host ? `${proto}://${host}` : process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000');
     const loginLink = `${origin}/?auth_email=${encodeURIComponent(email)}&auth_code=${verificationCode}`;
 
     if (apiKey) {
