@@ -20,11 +20,14 @@ export async function GET() {
   const mask = (val?: string) =>
     val ? `${val.slice(0, 3)}***${val.slice(-3)} (${val.length}자)` : '❌ 미설정';
 
-  // Find all env keys that might be Kakao/Resend related
-  const relatedKeys = Object.keys(process.env).filter((k) =>
-    k.toUpperCase().includes('KAKAO') ||
-    k.toUpperCase().includes('RESEND') ||
-    k.toUpperCase().includes('APP_URL')
+  // Find all custom env keys defined by the user
+  const customKeys = Object.keys(process.env).filter((k) =>
+    !k.startsWith('VERCEL_') &&
+    !k.startsWith('AWS_') &&
+    !k.startsWith('npm_') &&
+    !k.startsWith('NODE_') &&
+    !k.startsWith('__') &&
+    !['PATH', 'PWD', 'HOME', 'USER', 'SHELL', 'TZ'].includes(k)
   );
 
   return NextResponse.json({
@@ -38,7 +41,7 @@ export async function GET() {
       KAKAO_CLIENT_SECRET: mask(kakaoSecret),
       RESEND_API_KEY: mask(resendKey),
     },
-    detected_related_env_names: relatedKeys,
+    detected_all_custom_env_keys: customKeys,
     timestamp: new Date().toISOString(),
   });
 }
