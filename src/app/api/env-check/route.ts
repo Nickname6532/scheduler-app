@@ -15,7 +15,7 @@ export async function GET() {
     process.env.KAKAO_CLIENT_SECRET ||
     process.env.NEXT_PUBLIC_KAKAO_CLIENT_SECRET;
 
-  const resendKey = process.env.RESEND_API_KEY;
+  const resendKey = process.env.RESEND_API_KEY || process.env.EMAIL_SEND_API;
 
   const mask = (val?: string) =>
     val ? `${val.slice(0, 3)}***${val.slice(-3)} (${val.length}자)` : '❌ 미설정';

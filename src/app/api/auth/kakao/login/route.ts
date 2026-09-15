@@ -9,6 +9,7 @@ export async function GET(request: Request) {
     process.env.NEXT_PUBLIC_KAKAO_REST_API_KEY ||
     process.env.KAKAO_API_KEY ||
     process.env.KAKAO_CLIENT_ID ||
+    process.env.KAKAO_JS_KEY ||
     process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
 
   if (!clientId) {
