@@ -7,7 +7,9 @@ import {
   saveAppState,
   getCurrentUser,
   setCurrentUser,
-  getInitialSeedData,
+  logoutUser,
+  clearAllData,
+  createInitialUserData,
   AppStateData,
 } from '@/lib/storage';
 import { Calendar, CalendarEvent, User, CalendarMember, FreeSlot } from '@/types';
@@ -30,9 +32,10 @@ import {
   Sparkles,
   Plus,
   MessageCircle,
-  Users,
+  Mail,
+  UserCheck,
 } from 'lucide-react';
-import { format, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays, parseISO } from 'date-fns';
+import { format, addMonths, subMonths, addWeeks, subWeeks, addDays, subDays } from 'date-fns';
 import { ko } from 'date-fns/locale';
 
 export default function HomePage() {
@@ -52,20 +55,56 @@ export default function HomePage() {
   const [selectedEvent, setSelectedEvent] = useState<Partial<CalendarEvent> | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Initialize data on mount & check login link
+  // Initialize data on mount & check login callbacks
   useEffect(() => {
-    const data = loadAppState();
     let curUser = getCurrentUser();
 
-    // Check magic login link params
     if (typeof window !== 'undefined') {
       const params = new URLSearchParams(window.location.search);
+
+      // 1. Check Kakao OAuth success
+      const kakaoAuth = params.get('kakao_auth');
+      if (kakaoAuth === 'success') {
+        const nickname = params.get('nickname') || '카카오 회원';
+        const email = params.get('email') || '';
+        const profile = params.get('profile') || '';
+        const kakaoId = params.get('kakao_id') || `kakao_${Date.now()}`;
+
+        curUser = {
+          user_id: `u-${kakaoId}`,
+          kakao_id: kakaoId,
+          nickname,
+          email,
+          profile_image_url: profile || undefined,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        setCurrentUser(curUser);
+        setToastMessage(`'${nickname}'님, 카카오 계정으로 로그인되었습니다!`);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
+      // 2. Check Kakao OAuth error
+      const kakaoError = params.get('kakao_error');
+      if (kakaoError) {
+        if (kakaoError === 'no_api_key') {
+          setToastMessage('카카오 API 키(KAKAO_REST_API_KEY)가 Vercel 환경변수에 아직 설정되지 않았습니다.');
+        } else {
+          setToastMessage(`카카오 로그인 오류: ${kakaoError}`);
+        }
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+
+      // 3. Check magic login link params
       const authEmail = params.get('auth_email');
       if (authEmail) {
         curUser = {
-          ...curUser,
+          user_id: `u-${Date.now()}`,
+          kakao_id: '',
           email: authEmail,
           nickname: authEmail.split('@')[0],
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
         };
         setCurrentUser(curUser);
         setToastMessage(`'${authEmail}' 로그인 링크로 접속되었습니다.`);
@@ -73,6 +112,7 @@ export default function HomePage() {
       }
     }
 
+    const data = loadAppState(curUser);
     setAppState(data);
     setCurrentUserState(curUser);
 
@@ -81,7 +121,7 @@ export default function HomePage() {
     }
   }, []);
 
-  if (!appState || !currentUserState) {
+  if (!appState) {
     return (
       <div className="min-h-screen bg-slate-950 text-amber-400 flex items-center justify-center font-bold text-lg">
         모여봐 로딩 중...
@@ -121,26 +161,57 @@ export default function HomePage() {
     setCurrentDate(new Date());
   };
 
-  // Switch demo user
-  const handleSwitchUser = (user: User) => {
-    setCurrentUserState(user);
-    setCurrentUser(user);
-    setToastMessage(`로그인 계정이 '${user.nickname}'(으)로 전환되었습니다.`);
+  // Logout handler
+  const handleLogout = () => {
+    logoutUser();
+    setCurrentUserState(null);
+    const emptyState: AppStateData = { users: [], calendars: [], members: [], events: [], invitations: [] };
+    setAppState(emptyState);
+    setActiveCalendar(null);
+    setToastMessage('로그아웃되었습니다.');
   };
 
-  // Reset to seed data
+  // Reset to fresh data
   const handleResetData = () => {
-    const seed = getInitialSeedData();
-    setAppState(seed);
-    saveAppState(seed);
-    if (seed.calendars.length > 0) {
-      setActiveCalendar(seed.calendars[0]);
+    clearAllData();
+    if (currentUserState) {
+      const fresh = createInitialUserData(currentUserState);
+      saveAppState(fresh);
+      setAppState(fresh);
+      if (fresh.calendars.length > 0) setActiveCalendar(fresh.calendars[0]);
+    } else {
+      const emptyState: AppStateData = { users: [], calendars: [], members: [], events: [], invitations: [] };
+      setAppState(emptyState);
+      setActiveCalendar(null);
     }
-    setToastMessage('데모 데이터가 초기화되었습니다.');
+    setToastMessage('캘린더 데이터가 초기화되었습니다.');
+  };
+
+  // Start with clean guest account
+  const handleGuestStart = () => {
+    const guestUser: User = {
+      user_id: `u-guest-${Date.now()}`,
+      kakao_id: '',
+      nickname: '게스트',
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+    setCurrentUser(guestUser);
+    setCurrentUserState(guestUser);
+    const fresh = createInitialUserData(guestUser);
+    saveAppState(fresh);
+    setAppState(fresh);
+    setActiveCalendar(fresh.calendars[0]);
+    setToastMessage('게스트 모드로 시작되었습니다.');
   };
 
   // Save Event
   const handleSaveEvent = (eventData: Partial<CalendarEvent>) => {
+    if (!currentUserState) {
+      setIsEmailAuthOpen(true);
+      return;
+    }
+
     const updatedEvents = [...appState.events];
 
     if (eventData.event_id) {
@@ -155,9 +226,15 @@ export default function HomePage() {
       }
     } else {
       // Create new
+      const targetCalId = eventData.calendar_id || activeCalendar?.calendar_id || appState.calendars[0]?.calendar_id;
+      if (!targetCalId) {
+        setToastMessage('캘린더를 먼저 선택해주세요.');
+        return;
+      }
+
       const newEv: CalendarEvent = {
         event_id: `ev-${Date.now()}`,
-        calendar_id: eventData.calendar_id || activeCalendar?.calendar_id || appState.calendars[0].calendar_id,
+        calendar_id: targetCalId,
         creator_id: currentUserState.user_id,
         title: eventData.title || '새 일정',
         description: eventData.description,
@@ -189,6 +266,11 @@ export default function HomePage() {
 
   // Create Group Calendar
   const handleCreateCalendar = (calData: { name: string; description?: string; color_code: string }) => {
+    if (!currentUserState) {
+      setIsEmailAuthOpen(true);
+      return;
+    }
+
     const newCal: Calendar = {
       calendar_id: `cal-${Date.now()}`,
       owner_id: currentUserState.user_id,
@@ -221,6 +303,11 @@ export default function HomePage() {
 
   // Confirm Slot from Free-Busy Finder
   const handleConfirmSlotAsEvent = (slot: FreeSlot, targetCalendarId: string) => {
+    if (!currentUserState) {
+      setIsEmailAuthOpen(true);
+      return;
+    }
+
     setSelectedEvent({
       calendar_id: targetCalendarId,
       title: '🤝 약속 모임',
@@ -245,18 +332,28 @@ export default function HomePage() {
       {/* Header */}
       <Header
         currentUser={currentUserState}
-        onSwitchUser={handleSwitchUser}
         activeCalendar={activeCalendar}
         calendars={appState.calendars}
         onSelectCalendar={(cal) => setActiveCalendar(cal)}
         onOpenNewEventModal={() => {
+          if (!currentUserState) {
+            setIsEmailAuthOpen(true);
+            return;
+          }
           setSelectedEvent(null);
           setIsEventModalOpen(true);
         }}
-        onOpenNewCalendarModal={() => setIsCalendarModalOpen(true)}
+        onOpenNewCalendarModal={() => {
+          if (!currentUserState) {
+            setIsEmailAuthOpen(true);
+            return;
+          }
+          setIsCalendarModalOpen(true);
+        }}
         onOpenFreeBusyModal={() => setIsFreeBusyOpen(true)}
         onOpenInviteModal={() => setIsInviteModalOpen(true)}
-        onOpenEmailAuthModal={() => setIsEmailAuthOpen(true)}
+        onOpenAuthModal={() => setIsEmailAuthOpen(true)}
+        onLogout={handleLogout}
         onResetData={handleResetData}
       />
 
@@ -267,7 +364,13 @@ export default function HomePage() {
           calendars={appState.calendars}
           activeCalendar={activeCalendar}
           onSelectCalendar={(cal) => setActiveCalendar(cal)}
-          onOpenNewCalendarModal={() => setIsCalendarModalOpen(true)}
+          onOpenNewCalendarModal={() => {
+            if (!currentUserState) {
+              setIsEmailAuthOpen(true);
+              return;
+            }
+            setIsCalendarModalOpen(true);
+          }}
           onOpenInviteModal={() => setIsInviteModalOpen(true)}
           onOpenFreeBusyModal={() => setIsFreeBusyOpen(true)}
           viewMode={viewMode}
@@ -278,6 +381,43 @@ export default function HomePage() {
 
         {/* Calendar View Panel */}
         <main className="flex-1 flex flex-col gap-3 min-w-0 h-[calc(100vh-130px)]">
+          {/* Welcome / Real Version CTA Banner (when not logged in) */}
+          {!currentUserState && (
+            <div className="bg-gradient-to-r from-amber-500/10 via-indigo-950/40 to-slate-900 border border-amber-500/30 rounded-2xl p-4 sm:p-5 flex flex-col md:flex-row items-center justify-between gap-4 shadow-xl animate-in fade-in">
+              <div className="flex flex-col gap-1 text-center md:text-left">
+                <div className="flex items-center justify-center md:justify-start gap-2 text-amber-400 font-bold text-base">
+                  <Sparkles className="w-5 h-5 fill-amber-400" />
+                  <span>나만의 실사용 캘린더 시작하기</span>
+                </div>
+                <p className="text-xs text-slate-300 leading-relaxed">
+                  카카오 또는 이메일로 간편 로그인하여 친구·가족과 실시간으로 일정을 공유하고 빈 시간을 맞춰보세요.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <a
+                  href="/api/auth/kakao/login"
+                  className="px-3.5 py-2 rounded-xl bg-yellow-400 hover:bg-yellow-300 text-slate-950 font-bold text-xs shadow-md transition-all flex items-center gap-1.5 active:scale-95"
+                >
+                  <MessageCircle className="w-4 h-4 fill-slate-950" />
+                  <span>카카오 로그인</span>
+                </a>
+                <button
+                  onClick={() => setIsEmailAuthOpen(true)}
+                  className="px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs shadow-md transition-all flex items-center gap-1.5 active:scale-95"
+                >
+                  <Mail className="w-4 h-4" />
+                  <span>이메일 로그인</span>
+                </button>
+                <button
+                  onClick={handleGuestStart}
+                  className="px-3 py-2 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-medium text-xs border border-slate-700 transition-colors"
+                >
+                  게스트 모드
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* Controls Bar */}
           <div className="bg-slate-900 border border-slate-800 rounded-2xl p-3 px-4 flex items-center justify-between shadow-md">
             <div className="flex items-center gap-2">
@@ -334,6 +474,10 @@ export default function HomePage() {
                 }}
                 onSelectDate={(d) => {
                   setCurrentDate(d);
+                  if (!currentUserState) {
+                    setIsEmailAuthOpen(true);
+                    return;
+                  }
                   setSelectedEvent({
                     start_time: d.toISOString(),
                     end_time: d.toISOString(),
@@ -387,26 +531,36 @@ export default function HomePage() {
         }))}
         allEvents={appState.events}
         allUsers={appState.users}
-        currentUser={currentUserState}
+        currentUser={currentUserState || {
+          user_id: 'guest',
+          kakao_id: '',
+          nickname: '게스트',
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }}
         onConfirmSlotAsEvent={handleConfirmSlotAsEvent}
       />
 
-      <EventModal
-        isOpen={isEventModalOpen}
-        onClose={() => setIsEventModalOpen(false)}
-        initialEvent={selectedEvent}
-        calendars={appState.calendars}
-        currentUser={currentUserState}
-        onSaveEvent={handleSaveEvent}
-        onDeleteEvent={handleDeleteEvent}
-      />
+      {currentUserState && (
+        <>
+          <EventModal
+            isOpen={isEventModalOpen}
+            onClose={() => setIsEventModalOpen(false)}
+            initialEvent={selectedEvent}
+            calendars={appState.calendars}
+            currentUser={currentUserState}
+            onSaveEvent={handleSaveEvent}
+            onDeleteEvent={handleDeleteEvent}
+          />
 
-      <CalendarModal
-        isOpen={isCalendarModalOpen}
-        onClose={() => setIsCalendarModalOpen(false)}
-        currentUser={currentUserState}
-        onCreateCalendar={handleCreateCalendar}
-      />
+          <CalendarModal
+            isOpen={isCalendarModalOpen}
+            onClose={() => setIsCalendarModalOpen(false)}
+            currentUser={currentUserState}
+            onCreateCalendar={handleCreateCalendar}
+          />
+        </>
+      )}
 
       <InviteModal
         isOpen={isInviteModalOpen}
@@ -420,14 +574,23 @@ export default function HomePage() {
         isOpen={isEmailAuthOpen}
         onClose={() => setIsEmailAuthOpen(false)}
         onSuccess={(verifiedEmail) => {
-          const updatedUser: User = {
-            ...currentUserState,
+          const loggedUser: User = {
+            user_id: `u-${Date.now()}`,
+            kakao_id: '',
             email: verifiedEmail,
-            nickname: currentUserState.nickname.startsWith('데모') ? verifiedEmail.split('@')[0] : currentUserState.nickname,
+            nickname: verifiedEmail.split('@')[0],
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
           };
-          setCurrentUserState(updatedUser);
-          setCurrentUser(updatedUser);
-          setToastMessage(`'${verifiedEmail}' 계정으로 로그인되었습니다!`);
+          setCurrentUser(loggedUser);
+          setCurrentUserState(loggedUser);
+          const freshData = loadAppState(loggedUser);
+          setAppState(freshData);
+          saveAppState(freshData);
+          if (freshData.calendars.length > 0) {
+            setActiveCalendar(freshData.calendars[0]);
+          }
+          setToastMessage(`'${loggedUser.nickname}'님, 로그인되었습니다!`);
         }}
       />
 

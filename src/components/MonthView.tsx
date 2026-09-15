@@ -20,7 +20,7 @@ import { Lock, Plus, MapPin } from 'lucide-react';
 interface MonthViewProps {
   currentDate: Date;
   events: CalendarEvent[];
-  currentUser: User;
+  currentUser: User | null;
   activeCalendar: Calendar | null;
   calendars: Calendar[];
   onSelectEvent: (event: CalendarEvent) => void;
@@ -110,7 +110,7 @@ export function MonthView({
               <div className="flex flex-col gap-1 overflow-y-auto max-h-[85px] pr-0.5">
                 {dayEvents.map((ev) => {
                   const cal = calendarMap.get(ev.calendar_id);
-                  const isCreator = ev.creator_id === currentUser.user_id;
+                  const isCreator = currentUser ? ev.creator_id === currentUser.user_id : false;
 
                   // EVENT-02: Privacy setting - if private and not creator, mask title as "바쁨"
                   const displayTitle = ev.is_private && !isCreator ? '🔒 바쁨 (Busy)' : ev.title;

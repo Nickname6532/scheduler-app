@@ -3,25 +3,18 @@ import { NextResponse } from 'next/server';
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const code = searchParams.get('code');
+  const origin = process.env.NEXT_PUBLIC_APP_URL || new URL(request.url).origin;
 
   if (!code) {
-    return NextResponse.json({ error: 'Missing authorization code' }, { status: 400 });
+    return NextResponse.redirect(new URL('/?kakao_error=missing_code', origin));
   }
 
-  const clientId = process.env.KAKAO_REST_API_KEY;
-  const redirectUri = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/api/auth/kakao`;
+  const clientId = process.env.KAKAO_REST_API_KEY || process.env.NEXT_PUBLIC_KAKAO_JS_KEY;
+  const redirectUri = `${origin}/api/auth/kakao`;
 
   if (!clientId) {
-    // In demo environment without API keys, return mock user
-    return NextResponse.json({
-      success: true,
-      user: {
-        user_id: `kakao-${Date.now()}`,
-        kakao_id: 'kakao_demo_user',
-        nickname: '카카오 사용자',
-        profile_image_url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=150&q=80',
-      },
-    });
+    // If Kakao Key is not configured yet on Vercel
+    return NextResponse.redirect(new URL('/?kakao_error=no_api_key', origin));
   }
 
   try {
@@ -42,7 +35,10 @@ export async function GET(request: Request) {
 
     const tokenData = await tokenRes.json();
     if (!tokenData.access_token) {
-      return NextResponse.json({ error: 'Token acquisition failed', details: tokenData }, { status: 400 });
+      console.error('Kakao token error:', tokenData);
+      return NextResponse.redirect(
+        new URL(`/?kakao_error=${encodeURIComponent(tokenData.error_description || '토큰 발급 실패')}`, origin)
+      );
     }
 
     // 2. Fetch Kakao User Profile
@@ -53,18 +49,24 @@ export async function GET(request: Request) {
     });
 
     const userData = await userRes.json();
+    const nickname = userData.properties?.nickname || userData.kakao_account?.profile?.nickname || '카카오 회원';
+    const profile = userData.properties?.profile_image || userData.kakao_account?.profile?.profile_image_url || '';
+    const email = userData.kakao_account?.email || '';
 
-    return NextResponse.json({
-      success: true,
-      user: {
-        user_id: `kakao-${userData.id}`,
-        kakao_id: String(userData.id),
-        nickname: userData.properties?.nickname || userData.kakao_account?.profile?.nickname || '카카오 회원',
-        profile_image_url: userData.properties?.profile_image || userData.kakao_account?.profile?.profile_image_url,
-        email: userData.kakao_account?.email,
-      },
-    });
+    // Redirect to home page with real Kakao user profile
+    const redirectUrl = new URL('/', origin);
+    redirectUrl.searchParams.set('kakao_auth', 'success');
+    redirectUrl.searchParams.set('user_id', `kakao-${userData.id}`);
+    redirectUrl.searchParams.set('kakao_id', String(userData.id));
+    redirectUrl.searchParams.set('nickname', nickname);
+    if (profile) redirectUrl.searchParams.set('profile', profile);
+    if (email) redirectUrl.searchParams.set('email', email);
+
+    return NextResponse.redirect(redirectUrl);
   } catch (err: any) {
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('Kakao OAuth error:', err);
+    return NextResponse.redirect(
+      new URL(`/?kakao_error=${encodeURIComponent(err.message || '인증 오류')}`, origin)
+    );
   }
 }

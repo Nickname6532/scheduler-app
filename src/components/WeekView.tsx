@@ -17,7 +17,7 @@ import { Lock } from 'lucide-react';
 interface WeekViewProps {
   currentDate: Date;
   events: CalendarEvent[];
-  currentUser: User;
+  currentUser: User | null;
   calendars: Calendar[];
   onSelectEvent: (event: CalendarEvent) => void;
   onSelectDate: (date: Date) => void;
@@ -101,7 +101,7 @@ export function WeekView({
                   const heightPx = duration * 56;
 
                   const cal = calendarMap.get(ev.calendar_id);
-                  const isCreator = ev.creator_id === currentUser.user_id;
+                  const isCreator = currentUser ? ev.creator_id === currentUser.user_id : false;
                   const displayTitle = ev.is_private && !isCreator ? '🔒 바쁨 (Busy)' : ev.title;
                   const color = cal?.color_code || '#3B82F6';
 

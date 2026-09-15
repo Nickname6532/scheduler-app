@@ -29,7 +29,7 @@ git push -u origin main
 
 ## 🔑 2. 카카오 개발자 센터 API 키 설정 (실제 로그인/공유 연동)
 
-배포된 도메인(예: `https://moyeobwa.vercel.app`)을 카카오 API와 연결하는 과정입니다.
+배포된 도메인(`https://scheduler-app-eight-delta.vercel.app`)을 카카오 API와 연결하는 과정입니다.
 
 1. [카카오 개발자 센터](https://developers.kakao.com) 접속 후 로그인.
 2. **내 애플리케이션** → **애플리케이션 추가하기** (앱 이름: `모여봐`).
@@ -37,17 +37,18 @@ git push -u origin main
    - `JavaScript 키` (프론트엔드 카카오톡 공유용)
    - `REST API 키` (백엔드 카카오 로그인용)
 4. **[플랫폼]** → **Web 플랫폼 등록**:
-   - 사이트 도메인에 Vercel 도메인 등록 (예: `https://moyeobwa.vercel.app`, `http://localhost:3000`)
+   - 사이트 도메인에 Vercel 도메인 등록: `https://scheduler-app-eight-delta.vercel.app`, `http://localhost:3000`
 5. **[카카오 로그인]**:
    - 활성화 설정: `ON`
-   - Redirect URI 등록: `https://moyeobwa.vercel.app/api/auth/kakao`
+   - Redirect URI 등록: `https://scheduler-app-eight-delta.vercel.app/api/auth/kakao`
 6. **Vercel 환경 변수(Environment Variables) 등록**:
    - Vercel 대시보드 → Project Settings → **Environment Variables**
    - 아래 변수를 추가 후 **Save**:
      ```env
      NEXT_PUBLIC_KAKAO_JS_KEY=발급받은_JavaScript_키
      KAKAO_REST_API_KEY=발급받은_REST_API_KEY
-     NEXT_PUBLIC_APP_URL=https://본인앱.vercel.app
+     NEXT_PUBLIC_APP_URL=https://scheduler-app-eight-delta.vercel.app
+     RESEND_API_KEY=발급받은_Resend_키 (선택사항)
      ```
    - **Redeploy** 클릭으로 환경 변수 적용!
 

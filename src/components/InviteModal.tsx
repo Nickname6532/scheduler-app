@@ -9,7 +9,7 @@ interface InviteModalProps {
   isOpen: boolean;
   onClose: () => void;
   calendar: Calendar | null;
-  currentUser: User;
+  currentUser: User | null;
   onShowToast: (msg: string) => void;
 }
 
@@ -28,12 +28,12 @@ export function InviteModal({
   const inviteCode = `invite-${calendar.calendar_id}-${calendar.owner_id.slice(-4)}`;
   const inviteUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/invite/${inviteCode}`
-    : `https://moyeobwa.vercel.app/invite/${inviteCode}`;
+    : `https://scheduler-app-eight-delta.vercel.app/invite/${inviteCode}`;
 
   const handleKakaoShare = () => {
     const success = shareCalendarInvite({
       calendarName: calendar.name,
-      inviterName: currentUser.nickname,
+      inviterName: currentUser?.nickname || '친구',
       inviteCode,
     });
 

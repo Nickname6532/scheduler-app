@@ -25,7 +25,7 @@ interface SidebarProps {
   viewMode: 'month' | 'week' | 'day';
   onChangeViewMode: (mode: 'month' | 'week' | 'day') => void;
   calendarMembers: (CalendarMember & { user?: User })[];
-  currentUser: User;
+  currentUser: User | null;
 }
 
 export function Sidebar({
