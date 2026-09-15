@@ -54,6 +54,8 @@ export async function POST(request: Request) {
     codeStore.set(email, { code: verificationCode, expiresAt });
 
     const apiKey = process.env.RESEND_API_KEY;
+    const origin = request.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000';
+    const loginLink = `${origin}/?auth_email=${encodeURIComponent(email)}&auth_code=${verificationCode}`;
 
     if (apiKey) {
       // Real API Sending via Resend if API key is provided
@@ -66,15 +68,18 @@ export async function POST(request: Request) {
         body: JSON.stringify({
           from: '모여봐 <onboarding@resend.dev>',
           to: [email],
-          subject: '[모여봐] 이메일 인증 코드 안내',
+          subject: '[모여봐] 로그인 링크 및 인증 코드',
           html: `
-            <div style="font-family: sans-serif; padding: 20px; color: #1e293b;">
-              <h2 style="color: #f59e0b;">[모여봐] 이메일 인증 코드</h2>
-              <p>안녕하세요! 요청하신 인증 코드입니다.</p>
-              <div style="font-size: 32px; font-weight: bold; color: #4f46e5; letter-spacing: 4px; padding: 15px 0;">
+            <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; padding: 24px; color: #1e293b; max-width: 480px; margin: 0 auto; border: 1px solid #e2e8f0; border-radius: 16px;">
+              <h2 style="color: #4f46e5; margin-bottom: 8px;">[모여봐] 로그인 안내</h2>
+              <p style="color: #475569; font-size: 14px;">아래 버튼을 눌러 바로 로그인하거나 6자리 인증 코드를 입력하세요.</p>
+              <div style="margin: 20px 0;">
+                <a href="${loginLink}" style="display: inline-block; background-color: #4f46e5; color: #ffffff; padding: 12px 24px; border-radius: 12px; font-weight: bold; text-decoration: none;">로그인 링크로 바로 시작하기</a>
+              </div>
+              <div style="font-size: 28px; font-weight: bold; color: #0f172a; letter-spacing: 4px; padding: 12px 0;">
                 ${verificationCode}
               </div>
-              <p style="font-size: 12px; color: #64748b;">본 코드는 5분간 유효합니다.</p>
+              <p style="font-size: 12px; color: #94a3b8; margin-top: 16px;">본 링크와 인증 코드는 5분간 유효합니다.</p>
             </div>
           `,
         }),
@@ -83,17 +88,17 @@ export async function POST(request: Request) {
       if (!res.ok) {
         const errorData = await res.json();
         console.error('Resend API Error:', errorData);
-        // Fallback demo response if API fails
       }
     } else {
-      console.log(`[Email Code Demo Mode] Sent to ${email}: Code is ${verificationCode}`);
+      console.log(`[Email Demo Mode] Sent to ${email}: Code=${verificationCode}, Link=${loginLink}`);
     }
 
     return NextResponse.json({
       success: true,
-      message: '인증 코드가 이메일로 전송되었습니다.',
-      // In demo mode without ENV, return code for instant UI testing!
+      message: '인증 코드 및 로그인 링크가 준비되었습니다.',
+      // Return code & link in demo mode for instant testing
       demoCode: apiKey ? undefined : verificationCode,
+      loginLink: apiKey ? undefined : loginLink,
       isDemo: !apiKey,
     });
   } catch (error: any) {

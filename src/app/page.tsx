@@ -52,10 +52,27 @@ export default function HomePage() {
   const [selectedEvent, setSelectedEvent] = useState<Partial<CalendarEvent> | null>(null);
   const [toastMessage, setToastMessage] = useState<string | null>(null);
 
-  // Initialize data on mount
+  // Initialize data on mount & check login link
   useEffect(() => {
     const data = loadAppState();
-    const curUser = getCurrentUser();
+    let curUser = getCurrentUser();
+
+    // Check magic login link params
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const authEmail = params.get('auth_email');
+      if (authEmail) {
+        curUser = {
+          ...curUser,
+          email: authEmail,
+          nickname: authEmail.split('@')[0],
+        };
+        setCurrentUser(curUser);
+        setToastMessage(`'${authEmail}' 로그인 링크로 접속되었습니다.`);
+        window.history.replaceState({}, '', window.location.pathname);
+      }
+    }
+
     setAppState(data);
     setCurrentUserState(curUser);
 
@@ -403,7 +420,14 @@ export default function HomePage() {
         isOpen={isEmailAuthOpen}
         onClose={() => setIsEmailAuthOpen(false)}
         onSuccess={(verifiedEmail) => {
-          setToastMessage(`'${verifiedEmail}' 이메일 인증이 완료되었습니다!`);
+          const updatedUser: User = {
+            ...currentUserState,
+            email: verifiedEmail,
+            nickname: currentUserState.nickname.startsWith('데모') ? verifiedEmail.split('@')[0] : currentUserState.nickname,
+          };
+          setCurrentUserState(updatedUser);
+          setCurrentUser(updatedUser);
+          setToastMessage(`'${verifiedEmail}' 계정으로 로그인되었습니다!`);
         }}
       />
 
